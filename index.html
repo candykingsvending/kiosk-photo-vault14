@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiosk Photo Capture</title>
+</head>
+<body>
+    <video id="video" autoplay></video>
+    <canvas id="canvas" style="display: none;"></canvas>
+    <script>
+        const video = document.getElementById("video");
+        const canvas = document.getElementById("canvas");
+        const context = canvas.getContext("2d");
+
+        // Start camera
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+                setTimeout(capturePhoto, 3000); // Auto-capture after 3 seconds
+            });
+
+        function capturePhoto() {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob(uploadPhoto, "image/jpeg");
+        }
+
+        function uploadPhoto(blob) {
+            const formData = new FormData();
+            formData.append("image", blob);
+
+            fetch("https://api.imgur.com/3/image", {
+                method: "POST",
+                headers: {
+                    "Authorization": "Client-ID 07dffe41da96ec7"
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                const photoURL = data.data.link;
+                const timestamp = new Date().toISOString();
+
+                // Redirect to Tally Form with photo URL & timestamp
+                const tallyFormURL = "https://tally.so/r/nGQ4OL";
+                window.location.href = `${tallyFormURL}?photo_url=${encodeURIComponent(photoURL)}&timestamp=${encodeURIComponent(timestamp)}`;
+            })
+            .catch(error => console.error("Upload Error:", error));
+        }
+    </script>
+</body>
+</html>
