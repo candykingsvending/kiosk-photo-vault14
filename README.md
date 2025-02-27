@@ -1,0 +1,1 @@
+# kiosk-photo-vault14
